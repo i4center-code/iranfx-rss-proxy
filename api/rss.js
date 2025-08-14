@@ -1,30 +1,31 @@
 const axios = require('axios');
 const xml2js = require('xml2js');
 
+// یک حافظهٔ ساده برای کش کردن لیست استوری‌ها
+let cachedItems = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 60 * 1000; // 60 ثانیه
+
 module.exports = async (req, res) => {
-    // تنظیمات CORS برای دسترسی امن از اپلیکیشن شما
+    // تنظیمات CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // پاسخ به درخواست‌های OPTIONS برای بررسی CORS
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
     }
 
     try {
-        // تنظیمات کش در سرور Vercel
-        // s-maxage=300: سرور Vercel پاسخ را برای ۵ دقیقه کش می‌کند.
-        // stale-while-revalidate: اگر درخواستی بعد از ۵ دقیقه آمد، اول پاسخ قدیمی را می‌دهد و سپس در پس‌زمینه داده‌های جدید را می‌گیرد.
-        res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
-        
-        // این هدرها باعث می‌شوند مرورگرها (و WebView) داده‌ها را کش نکنند.
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
+        const now = Date.now();
+
+        // اگر کش هنوز معتبر است، از آن استفاده کن
+        if (cachedItems && (now - cacheTimestamp < CACHE_DURATION)) {
+            return res.status(200).json({ items: cachedItems });
+        }
 
         const rssUrl = 'https://iranfxapp.ir/category/news-forex-crypto/feed/';
-        
         const response = await axios.get(rssUrl);
         const xml = response.data;
 
@@ -33,12 +34,18 @@ module.exports = async (req, res) => {
             if (err) {
                 return res.status(500).json({ error: 'Failed to parse RSS feed' });
             }
+
             const items = result.rss.channel.item.map(item => ({
                 title: item.title,
-                link: item.link,
+                link: item.link,  // لینک مستقیم خبر
                 pubDate: item.pubDate,
                 guid: item.guid['#text']
             }));
+
+            // ذخیره در کش
+            cachedItems = items;
+            cacheTimestamp = Date.now();
+
             res.status(200).json({ items });
         });
     } catch (error) {
