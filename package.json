@@ -1,13 +1,13 @@
 {
   "name": "iranfx-rss-proxy",
   "version": "1.0.0",
-  "description": "RSS Proxy for IranFX news feed",
+  "description": "A simple proxy to convert RSS to JSON for Vercel",
   "main": "api/rss.js",
   "scripts": {
     "start": "vercel dev"
   },
   "dependencies": {
-    "node-fetch": "^3.3.2"
-  },
-  "type": "module"
+    "axios": "^1.6.8",
+    "xml2js": "^0.6.2"
+  }
 }
